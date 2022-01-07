@@ -1,0 +1,13 @@
+---
+# defaults file for DatabaseSetup
+
+mysql_database: 'cowrie'
+mysql_user: 'cowrie'
+mysql_user_password: 'ChangeThisPls'
+mysql_port: '51845'
+
+grafana_server: '192.168.153.5'
+
+postgresql_database: 'chameleon'
+postgresql_user: 'cowrie'
+postgresql_user_password: 'ChangeThisPls'

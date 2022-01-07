@@ -1,0 +1,251 @@
+---
+# tasks file for InstallHoneypots
+
+### COWRIE
+
+# Basic
+  - name: Install packages/dependencies
+    apt:
+      name: 
+        - git
+        - acl
+        - libssl-dev
+        - libffi-dev
+        - libmysqlclient-dev
+        - build-essential
+        - libpython3-dev
+        - authbind
+        - virtualenv
+        - python3-virtualenv
+        - python3-pip
+        - mariadb-server
+        - python3-pymysql
+        - postgresql
+        - python3-psycopg2
+      state: latest
+    become: true
+
+  - name: Set hostname
+    hostname:
+      name: '{{ honeypot_name }}'
+    become: true
+
+  - name: Set static IP
+    copy:
+      dest: /etc/netplan/00-installer-config.yaml
+      content: |
+        network:
+          version: 2
+          ethernets:
+            {{ ipv4_interface }}:
+              dhcp4: no
+              addresses: [{{ honeypot_ipv4 }}/24]
+              gateway4: {{ honeypot_gateway }}
+              nameservers:
+                addresses: [{{ honeypot_dns }}]
+    become: true
+
+  - name: Apply static IP
+    command: 'netplan apply'
+    become: true
+
+  - name: Make Cowrie user
+    user:
+      name: cowrie
+      shell: /bin/bash
+      state: present
+      home: /home/cowrie/
+    become: true
+
+  - name: Download Cowrie git repo
+    become_user: cowrie
+    git:
+      dest: /home/cowrie/cowrie
+      repo: http://github.com/cowrie/cowrie
+      force: yes
+    become: true
+
+  - name: Mysql python toevoegen
+    lineinfile:
+      path: /home/cowrie/cowrie/requirements.txt
+      line: 'mysql-connector-python'
+    become: true
+
+  - name: Mysql python module installeren
+    become_user: cowrie
+    pip:
+      name: 'mysql-connector-python'
+      executable: pip3
+    become: true
+
+  - name: Make virtualenv with python
+    become_user: cowrie
+    pip:
+      virtualenv: /home/cowrie/cowrie/cowrie-env
+      requirements: /home/cowrie/cowrie/requirements.txt
+    become: true
+
+# Authbind
+  - name: Set Cowrie SSH port to 22 
+    file:
+      owner: cowrie
+      group: cowrie
+      path: /etc/authbind/byport/22
+      state: touch
+      mode: '770'
+    become: true
+
+  - name: Set Cowrie TELNET port to 23
+    file:
+      owner: cowrie
+      group: cowrie
+      path: /etc/authbind/byport/23
+      state: touch
+      mode: '770'
+    become: true
+
+# Config backup + new config
+  - name: Copy Cowrie default configfile for editing
+    become_user: cowrie
+    copy:
+      remote_src: yes
+      src: /home/cowrie/cowrie/etc/cowrie.cfg.dist
+      dest: /home/cowrie/cowrie/etc/cowrie.cfg
+    become: true
+
+  - name: Change Cowrie fake hostname
+    become_user: cowrie
+    lineinfile:
+      path: /home/cowrie/cowrie/etc/cowrie.cfg
+      regexp: '^hostname ='
+      line: 'hostname = {{ fake_hostname }}'
+    become: true
+
+  - name: Change Cowrie fake kernel_version
+    become_user: cowrie
+    lineinfile:
+      path: /home/cowrie/cowrie/etc/cowrie.cfg
+      regexp: '^kernel_version ='
+      line: 'kernel_version = {{ fake_kernel_version }}'
+    become: true
+
+  - name: Change Cowrie fake kernel_build_string
+    become_user: cowrie
+    lineinfile:
+      path: /home/cowrie/cowrie/etc/cowrie.cfg
+      regexp: '^kernel_build_string ='
+      line: 'kernel_build_string = {{ fake_kernel_build_string }}'
+    become: true
+
+  - name: Change Cowrie fake ssh version
+    become_user: cowrie
+    lineinfile:
+      path: /home/cowrie/cowrie/etc/cowrie.cfg
+      regexp: '^version ='
+      line: 'version = {{ fake_SSH_version }}'
+    become: true
+
+  - name: Change Cowrie listening port (SSH)
+    become_user: cowrie
+    lineinfile:
+      path: /home/cowrie/cowrie/etc/cowrie.cfg
+      regexp: 'listen_endpoints = tcp:2222:interface=0.0.0.0'
+      line: 'listen_endpoints = tcp:{{ cowrie_SSH_port }}:interface=0.0.0.0'
+    become: true
+
+  - name: Enable Cowrie TELNET service
+    become_user: cowrie
+    lineinfile:
+      path: /home/cowrie/cowrie/etc/cowrie.cfg
+      firstmatch: yes
+      regexp: '^enabled = false'
+      insertafter: '\\[telnet\\]'
+      line: 'enabled = true'
+      state: present
+    become: true
+
+  - name: Change Cowrie listening port (TELNET)
+    become_user: cowrie
+    lineinfile:
+      path: /home/cowrie/cowrie/etc/cowrie.cfg
+      regexp: 'listen_endpoints = tcp:2223:interface=0.0.0.0'
+      line: 'listen_endpoints = tcp:{{ cowrie_TELNET_port }}:interface=0.0.0.0'
+    become: true
+
+# Cowrie fake logins
+  - name: Copy Cowrie default userdb + add only my users
+    copy:
+      dest: /home/cowrie/cowrie/etc/userdb.txt
+      content: |
+        {{ cowrie_fake_login }}:x:{{ cowrie_fake_password[0] }}
+        {{ cowrie_fake_login }}:x:{{ cowrie_fake_password[1] }}
+        {{ cowrie_fake_login }}:x:{{ cowrie_fake_password[2] }}
+    become: true 
+
+# Cowrie fake test user in passwd file
+  - name: Change passwd file
+    become_user: cowrie
+    lineinfile:
+      path: /home/cowrie/cowrie/honeyfs/etc/passwd
+      regexp: '^phil:'
+      line: '{{ cowrie_fake_login }}:x:1000:1000:,,,:/home/{{ cowrie_fake_login }}:/bin/bash'
+    become: true
+
+# Cowrie fake test user in shadow file
+  - name: Change shadow file
+    become_user: cowrie
+    lineinfile:
+      path: /home/cowrie/cowrie/honeyfs/etc/shadow
+      regexp: '^phil:'
+      line: '{{ cowrie_fake_login }}:$6$ErqInBoz$FibX212AFnHMvyZdWW87bq5Cm3214CoffqFuUyzz.ZKmZ725zKqSPRRlQ1fGGP02V/WawQWQrDda6YiKERNR61:15800:0:99999:7:::'
+    become: true
+
+### CHAMELEON PROJECT (honeypots)
+
+# Basic
+  - name: Chameleon honeypots python modules installeren
+    become_user: cowrie
+    pip:
+      name:
+        - honeypots
+      executable: pip3
+    become: true
+
+  - name: New chameleon directory
+    become_user: cowrie
+    file:
+      path: /home/cowrie/chameleon/
+      state: directory
+    become: true
+
+# Config
+  - name: Make config file
+    become_user: cowrie
+    copy:
+      dest: /home/cowrie/chameleon/config.json
+      content: |
+        {
+          "logs":"file,terminal",
+          "logs_location":"/home/cowrie/chameleon/",
+
+          "honeypots": {
+              "ftp": {
+                "port": 10021,
+                "username": "test",
+                "password": "test123"
+              },
+
+              "http": {
+                "port": 10080,
+                "username": "test",
+                "password": "test123"
+              },
+
+              "mysql": {
+                "port": 13306,
+                "username": "test",
+                "password": "test123"
+              }
+          }
+        }
+    become: true

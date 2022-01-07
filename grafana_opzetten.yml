@@ -1,0 +1,13 @@
+---
+### Playbook for installing Grafana
+- name: Setting up Grafana
+  hosts: grafana
+  remote_user: USER
+
+  roles:
+
+    - role: UpdateSystem
+
+    - role: SSH_hardening
+
+    - role: InstallGrafana

@@ -1,0 +1,19 @@
+---
+# defaults file for InstallGrafana
+
+grafana_name: 'grafana-server'
+ipv4_interface: 'ens33'
+grafana_ipv4: '192.168.153.5'
+grafana_gateway: '192.168.153.254'
+grafana_dns: '192.168.153.254,8.8.8.8'
+
+honeypot_ipv4: '172.16.17.5'
+mysql_database: 'cowrie'
+mysql_user: 'cowrie'
+mysql_user_password: 'ChangeThisPls'
+mysql_port: '90945'
+
+postgresql_database: 'chameleon'
+postgresql_user: 'cowrie'
+postgresql_user_password: 'ChangeThisPls'
+postgresql_port: '5432'

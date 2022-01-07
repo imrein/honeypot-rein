@@ -1,0 +1,76 @@
+---
+# tasks file for InstallGrafana
+
+### GRAFANA
+
+# Basic
+  - name: Add Grafana repo key
+    apt_key:
+      url: https://packages.grafana.com/gpg.key
+      state: present
+    become: true
+
+  - name: Add Grafana + Certbot repo
+    apt_repository:
+      repo: |
+        deb https://packages.grafana.com/oss/deb stable main
+        ppa:certbot/certbot
+      state: present
+    become: true 
+
+  - name: Install packages/dependencies
+    apt:
+      name: 
+        - grafana
+        - certbot
+      state: latest
+    become: true
+
+  - name: Set hostname
+    hostname:
+      name: '{{ grafana_name }}'
+    become: true
+
+  - name: Set static IP
+    copy:
+      dest: /etc/netplan/00-installer-config.yaml
+      content: |
+        network:
+          version: 2
+          ethernets:
+            {{ ipv4_interface }}:
+              dhcp4: no
+              addresses: [{{ grafana_ipv4 }}/24]
+              gateway4: {{ grafana_gateway }}
+              nameservers:
+                addresses: [{{ grafana_dns }}]
+    become: true
+
+  - name: Apply static IP
+    command: 'netplan apply'
+    become: true
+
+# Add automatic datasource
+  - name: Create datasource for MySQL database
+    copy:
+      dest: /etc/grafana/provisioning/datasources/sample.yaml
+      content: |
+        apiVersion: 1
+        datasources:
+          - name: Cowrie mysql database
+            type: mysql
+            url: {{ honeypot_ipv4 }}:{{ mysql_port }}
+            secureJsonData:
+              password: {{ mysql_user_password }}
+            user: {{ mysql_user }}
+            database: {{ mysql_database }}
+
+          - name: Cowrie postgresql database
+            type: postgres
+            url: {{ honeypot_ipv4 }}:{{ postgresql_port }}
+            secureJsonData:
+              password: {{ postgresql_user_password }}
+            user: {{ postgresql_user }}
+            database: {{ postgresql_database }}
+    become: true
+    notify: Restart Grafana

@@ -1,0 +1,34 @@
+---
+# tasks file for SSH_hardening
+
+### SSH HARDENING
+
+# Backup
+  - name: Backup sshd_config file
+    copy:
+      remote_src: yes
+      src: /etc/ssh/sshd_config
+      dest: /etc/ssh/sshd_config.backup
+    become: true
+
+# SSH hardening
+  - name: SSH hardening -> only SSH-keys
+    lineinfile:
+      path: /etc/ssh/sshd_config
+      regexp: '^PasswordAuthentication yes'
+      line: 'PasswordAuthentication no'
+    become: true
+
+  - name: SSH hardening -> disallow root + 1 MGMT user + change port
+    blockinfile:
+      path: /etc/ssh/sshd_config
+      block: |
+        Port {{ real_SSH_port }}
+        PermitRootLogin no
+        AllowUsers {{ real_SSH_user }}
+    become: true
+    notify:
+      - Restart SSH
+
+  - name: Flush handlers
+    meta: flush_handlers

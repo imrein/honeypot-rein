@@ -1,0 +1,167 @@
+---
+# tasks file for DatabaseSetup
+
+### MYSQL
+
+# Make users
+  - name: Add new local database user for cowrie
+    mysql_user:
+      login_user: 'root'
+      login_password: ''
+      login_unix_socket: '/var/run/mysqld/mysqld.sock'
+      name: '{{ mysql_user }}'
+      password: '{{ mysql_user_password }}'
+      priv: '{{ mysql_database }}.*:ALL,GRANT'
+      state: present
+    become: true
+
+  - name: Add new remote database user for cowrie
+    mysql_user:
+      login_user: 'root'
+      login_password: ''
+      login_unix_socket: '/var/run/mysqld/mysqld.sock'
+      name: '{{ mysql_user }}'
+      password: '{{ mysql_user_password }}'
+      priv: '{{ mysql_database }}.*:ALL,GRANT'
+      host: '{{ grafana_server }}'
+      state: present
+    become: true
+
+  - name: Remove root database user
+    mysql_user:
+      login_user: 'root'
+      login_password: ''
+      login_unix_socket: '/var/run/mysqld/mysqld.sock'
+      name: 'root'
+      host_all: yes
+      state: absent
+    become: true
+
+# Fix encoding issue
+  - name: Change charset in Cowrie python script
+    lineinfile:
+      path: /home/cowrie/cowrie/src/cowrie/output/mysql.py
+      regexp: 'charset="utf8mb4"'
+      line: 'charset="utf8",'
+    become: true
+
+# Make database + config
+  - name: Install Cowrie database
+    become_user: cowrie
+    mysql_db:
+      login_user: '{{ mysql_user }}'
+      login_password: '{{ mysql_user_password }}'
+      name: '{{ mysql_database }}'
+      state: import
+      target: /home/cowrie/cowrie/docs/sql/mysql.sql
+    become: true
+
+  - name: Edit config to set cowrie login for database
+    become_user: cowrie
+    lineinfile:
+      path: /home/cowrie/cowrie/etc/cowrie.cfg
+      firstmatch: yes
+      regexp: '^password = secret'
+      insertafter: '\\[output_mysql\\]'
+      line: 'password = {{ mysql_user_password }}'
+      state: present
+    become: true
+
+  - name: Edit config to set database port
+    become_user: cowrie
+    lineinfile:
+      path: /home/cowrie/cowrie/etc/cowrie.cfg
+      firstmatch: yes
+      insertafter: '\\[output_mysql\\]'
+      regexp: '^port = 3306'
+      line: 'port = {{ mysql_port }}'
+      state: present
+    become: true
+
+  - name: Remove disable logging
+    become_user: cowrie
+    lineinfile:
+      path: /home/cowrie/cowrie/etc/cowrie.cfg
+      firstmatch: yes
+      regexp: '^enabled = false'
+      insertafter: '\\[output_mysql\\]'
+      state: absent
+    become: true
+
+  - name: Enable mysql logging
+    become_user: cowrie
+    lineinfile:
+      path: /home/cowrie/cowrie/etc/cowrie.cfg
+      firstmatch: yes
+      regexp: '^debug = false'
+      insertafter: '\\[output_mysql\\]'
+      line: 'enabled = true'
+      state: present
+    become: true
+
+  - name: Change mysql bind-address
+    lineinfile:
+      path: /etc/mysql/mariadb.conf.d/50-server.cnf
+      regexp: '^bind-address'
+      line: 'bind-address = 0.0.0.0'
+    become: true
+
+  - name: Change mysql port
+    lineinfile:
+      path: /etc/mysql/mariadb.conf.d/50-server.cnf
+      regexp: '^port'
+      line: 'port = {{ mysql_port }}'
+    become: true
+    notify:
+      - Restart MariaDB
+
+### POSTGRESQL
+
+# Config
+  - name: Change PostgreSQL config
+    lineinfile:
+      path: /etc/postgresql/12/main/pg_hba.conf
+      firstmatch: yes
+      regexp: '^local'
+      insertafter: '# Database administrative login by Unix domain socket'
+      line: 'local   all             postgres,{{ postgresql_user }}                         trust'
+    become: true
+    notify:
+      - Restart PostgreSQL
+
+  - name: Flush handlers
+    meta: flush_handlers
+
+# Make database + user
+  - name: Add new PostgreSQL database
+    become_user: postgres
+    postgresql_db:
+      login_user: postgres
+      login_password: ""
+      name: chameleon
+      encoding: UTF-8
+      state: present
+
+  - name: Add new PostgreSQL database user
+    become_user: cowrie
+    postgresql_user:
+      login_user: postgres
+      login_password: ""
+      name: '{{ postgresql_user }}'
+      password: '{{ postgresql_user_password }}'
+
+  - name: Change permissions
+    become_user: cowrie
+    postgresql_privs:
+      db: '{{ postgresql_database }}'
+      role: '{{ postgresql_user }}'
+      objs: ALL_IN_SCHEMA
+      privs: SELECT
+
+  - name: Change postgres default user password
+    become_user: cowrie
+    postgresql_user:
+      login_user: postgres
+      login_password: ""
+      name: postgres
+      password: veryhardpassword

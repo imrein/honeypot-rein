@@ -1,0 +1,22 @@
+---
+# defaults file for InstallHoneypots
+
+honeypot_name: 'honeypot'
+ipv4_interface: 'ens33'
+honeypot_ipv4: '172.16.17.5'
+honeypot_gateway: '172.16.17.254'
+honeypot_dns: '172.16.17.254,8.8.8.8'
+
+fake_hostname: 'CORE-SRV-02'
+fake_kernel_version: '5.4.0-88-generic x86_64'
+fake_kernel_build_string: '#99-Ubuntu SMP'
+fake_hardware_platform: 'x86_64'
+fake_SSH_version: 'SSH-2.0-OpenSSH_4.6'
+
+cowrie_SSH_port: '22'
+cowrie_TELNET_port: '23'
+cowrie_fake_login: 'test'
+cowrie_fake_password:
+    - '12345'
+    - 'test123'
+    - '54321'

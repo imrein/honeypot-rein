@@ -1,0 +1,41 @@
+---
+# tasks file for StartHoneypots
+
+### RUN AT STARTUP
+
+  - name: Make startup script
+    become_user: cowrie
+    copy:
+      dest: /home/cowrie/startupScript.sh
+      content: |
+        #!/bin/bash
+        /home/cowrie/cowrie/bin/cowrie start
+        nohup python3 -m honeypots --setup ftp,http,mysql --config /home/cowrie/chameleon/config.json </dev/null >/dev/null 2>&1 &
+    become: true
+
+  - name: Make startup script executable
+    become_user: cowrie
+    file:
+      dest: /home/cowrie/startupScript.sh
+      mode: a+x
+    become: true
+
+  - name: Run startup script at boot
+    become_user: cowrie
+    cron:
+      name: 'Startup services'
+      special_time: reboot
+      job: '/home/cowrie/startupScript.sh'
+    become: true
+
+### STARTING HONEYPOT SERVICES
+
+  - name: Start Cowrie service
+    become_user: cowrie
+    command: /home/cowrie/cowrie/bin/cowrie start
+    become: true 
+
+  - name: Start chameleon honeypots
+    become_user: cowrie
+    shell: nohup python3 -m honeypots --setup ftp,http,mysql --config /home/cowrie/chameleon/config.json </dev/null >/dev/null 2>&1 &
+    become: true

@@ -1,0 +1,5 @@
+---
+# defaults file for SSH_hardening
+
+real_SSH_port: '9850'
+real_SSH_user: 'bob'

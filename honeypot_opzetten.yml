@@ -1,0 +1,17 @@
+---
+### Playbook honeypot
+- name: Setting up honeypot
+  hosts: honeypot
+  remote_user: rein
+
+  roles:
+
+    - role: UpdateSystem
+
+    - role: SSH_hardening
+
+    - role: InstallHoneypots
+
+    - role: DatabaseSetup
+
+    - role: StartHoneypots
