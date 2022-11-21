@@ -64,13 +64,5 @@
               password: {{ mysql_user_password }}
             user: {{ mysql_user }}
             database: {{ mysql_database }}
-
-          - name: Cowrie postgresql database
-            type: postgres
-            url: {{ honeypot_ipv4 }}:{{ postgresql_port }}
-            secureJsonData:
-              password: {{ postgresql_user_password }}
-            user: {{ postgresql_user }}
-            database: {{ postgresql_database }}
     become: true
     notify: Restart Grafana

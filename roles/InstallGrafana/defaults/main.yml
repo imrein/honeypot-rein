@@ -12,8 +12,3 @@ mysql_database: 'cowrie'
 mysql_user: 'cowrie'
 mysql_user_password: 'ChangeThisPls'
 mysql_port: '90945'
-
-postgresql_database: 'chameleon'
-postgresql_user: 'cowrie'
-postgresql_user_password: 'ChangeThisPls'
-postgresql_port: '5432'

@@ -34,8 +34,3 @@
     become_user: cowrie
     command: /home/cowrie/cowrie/bin/cowrie start
     become: true 
-
-  - name: Start chameleon honeypots
-    become_user: cowrie
-    shell: nohup python3 -m honeypots --setup ftp,http,mysql --config /home/cowrie/chameleon/config.json </dev/null >/dev/null 2>&1 &
-    become: true

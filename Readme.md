@@ -9,4 +9,3 @@ This project will automatically setup a honeypot with a Grafana server to visual
 ---
 
 - [Cowrie](https://github.com/cowrie/cowrie)
-- [Qeeqbox-honeypots](https://github.com/qeeqbox/honeypots)
